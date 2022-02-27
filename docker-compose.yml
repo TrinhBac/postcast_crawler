@@ -1,0 +1,63 @@
+version: '3'
+
+networks:
+  postcast_crawler_network:
+
+services:
+  web:
+    restart: always
+    build: .
+    volumes:
+      - ./:/usr/src/app/
+      - ./php-fpm.conf:/etc/php-fpm.d
+    ports:
+      - "8221:9000"
+    networks:
+      - postcast_crawler_network
+    container_name: postcast_crawler_web
+
+  nginx:
+    restart: always
+    build: nginx/
+    volumes:
+      - ./:/usr/src/app/
+      - ./nginx:/etc/nginx/conf.d
+    ports:
+      - "85:80"
+    networks:
+      - postcast_crawler_network
+    container_name: postcast_crawler_nginx
+
+  mysql:
+    command:
+      --default-authentication-plugin=mysql_native_password
+#      --character-set-server=utf8mb4
+#      --collation-server=utf8mb4_0900_as_cs
+    container_name: postcast_crawler_mysql
+    image: mysql
+    environment:
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: "123456789"
+      MYSQL_DATABASE: ${DB_DATABASE}
+    ports:
+      - "3311:3306"
+    volumes:
+      - ~/.postcast_crawler/data/mysql:/var/lib/mysql
+#    restart: unless-stopped
+    networks:
+      - postcast_crawler_network
+
+  adminer:
+    container_name: postcast_crawler_adminer
+    image: adminer
+    depends_on:
+      - mysql
+    environment:
+      ADMINER_PLUGINS: "tables-filter tinymce dump-zip"
+      ADMINER_DEFAULT_SERVER: "mysql"
+    networks:
+      - postcast_crawler_network
+    ports:
+      - "8085:8080"
+#    restart: unless-stopped
